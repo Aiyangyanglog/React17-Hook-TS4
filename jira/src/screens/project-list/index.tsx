@@ -4,11 +4,15 @@ import { useState, useEffect } from "react";
 import { cleanObject, useMount, useDebounce } from "../../utils";
 import { useHttp } from "utils/http";
 import styled from "@emotion/styled";
+import { Typography } from "antd";
 
 // 使用 JS 的同学，大部分的错误都是在runtime(运行时)的时候才发现的
 // 我们希望，在静态代码中，就能找到其中的一些错误 -> 强类型
 export const ProjectListScreen = () => {
   const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<null | Error>(null);
+
   const [param, setParam] = useState({
     name: "",
     personId: "",
@@ -18,7 +22,14 @@ export const ProjectListScreen = () => {
   const client = useHttp();
 
   useEffect(() => {
-    client("projects", { data: cleanObject(debouncedParam) }).then(setList);
+    setIsLoading(true);
+    client("projects", { data: cleanObject(debouncedParam) })
+      .then(setList)
+      .catch((error) => {
+        setList([]);
+        setError(error);
+      })
+      .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedParam]);
 
@@ -29,7 +40,10 @@ export const ProjectListScreen = () => {
     <Container>
       <h1>项目列表</h1>
       <SearchPanel users={users} param={param} setParam={setParam} />
-      <List users={users} list={list} />
+      {error ? (
+        <Typography.Text type={"danger"}>{error.message}</Typography.Text>
+      ) : null}
+      <List loading={isLoading} users={users} dataSource={list} />
     </Container>
   );
 };
